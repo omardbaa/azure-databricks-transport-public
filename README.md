@@ -39,3 +39,8 @@ Les données traitées peuvent être utilisées pour divers cas d'utilisation, n
 
 Il est important de prendre en compte les catégories de retard pour une meilleure compréhension des performances du système de transport. Il est également important de noter que les données sont générées synthétiquement à des fins de démonstration et de test, ce qui peut entraîner des variations dans les données simulées.
 
+
+
+<img width="665" alt="automatisation" src="https://github.com/omardbaa/azure-databricks-transport-public/assets/105659023/4c838149-549e-4028-9369-a9c04517e1c4">
+
+
