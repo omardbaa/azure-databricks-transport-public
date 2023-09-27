@@ -1,0 +1,55 @@
+{
+	"name": "Public Transport ETL",
+	"properties": {
+		"activities": [
+			{
+				"name": "source data",
+				"type": "DatabricksNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Repos/odbaa.ext@simplonformations.onmicrosoft.com/azure-databricks-transport-public/public-transport-data-generator"
+				},
+				"linkedServiceName": {
+					"referenceName": "SourceData",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "data processing",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "source data",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Repos/odbaa.ext@simplonformations.onmicrosoft.com/azure-databricks-transport-public/Public-Transport-transformation"
+				},
+				"linkedServiceName": {
+					"referenceName": "SourceData",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"annotations": []
+	}
+}
