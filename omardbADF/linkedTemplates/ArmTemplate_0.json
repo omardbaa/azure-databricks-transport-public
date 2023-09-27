@@ -1,0 +1,106 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "omardbADF"
+		},
+		"SourceData_accessToken": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accessToken' of 'SourceData'"
+		},
+		"SourceData_properties_typeProperties_existingClusterId": {
+			"type": "string",
+			"defaultValue": "0927-073313-j2x77a1j"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/SourceData')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureDatabricks",
+				"typeProperties": {
+					"domain": "https://adb-7444482425406993.13.azuredatabricks.net",
+					"accessToken": {
+						"type": "SecureString",
+						"value": "[parameters('SourceData_accessToken')]"
+					},
+					"existingClusterId": "[parameters('SourceData_properties_typeProperties_existingClusterId')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Public Transport ETL')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "source data",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Repos/odbaa.ext@simplonformations.onmicrosoft.com/azure-databricks-transport-public/public-transport-data-generator"
+						},
+						"linkedServiceName": {
+							"referenceName": "SourceData",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "data processing",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "source data",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Repos/odbaa.ext@simplonformations.onmicrosoft.com/azure-databricks-transport-public/Public-Transport-transformation"
+						},
+						"linkedServiceName": {
+							"referenceName": "SourceData",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SourceData')]"
+			]
+		}
+	]
+}
