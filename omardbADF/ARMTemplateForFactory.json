@@ -72,6 +72,33 @@
 							"referenceName": "SourceData",
 							"type": "LinkedServiceReference"
 						}
+					},
+					{
+						"name": "Conservation",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "data processing",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Repos/odbaa.ext@simplonformations.onmicrosoft.com/azure-databricks-transport-public/Conservation"
+						},
+						"linkedServiceName": {
+							"referenceName": "SourceData",
+							"type": "LinkedServiceReference"
+						}
 					}
 				],
 				"policy": {
