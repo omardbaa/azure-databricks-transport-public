@@ -77,10 +77,20 @@ def delete_old_raw_files():
             # Delete the file
             dbutils.fs.rm(source_directory)
 
+# Initialize a timer
+start_time = time.time()
+
 # Call the functions
 while True:
     move_processed_files()
     delete_old_raw_files()
+    
+    # Check if there are no files left and the timer has exceeded 2 minutes
+    if len(dbutils.fs.ls(mountPoint + "raw/")) == 0 and len(dbutils.fs.ls(mountPoint + "processed/")) == 0:
+        elapsed_time = time.time() - start_time
+        if elapsed_time >= 120:
+            break
+    
     # Sleep for a while before checking again (e.g., every minute)
-    time.sleep(30)
+    time.sleep(60)
 
