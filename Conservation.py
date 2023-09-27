@@ -13,67 +13,74 @@ spark.conf.set(
 
 # COMMAND ----------
 
-
 from datetime import datetime
+import time
 
-storage_account_name = "omardbstorageaccount"
-storage_account_access_key = "n/M6dGAvjc8505kkOdZWCcfky+UKdckTs1aAhVFqb/J7Ck1yTg+meYzFXNAb/oz1mxXbizdVQdB5+ASt8wSp4w=="
-container_name = "public-transport-data"
+# Montage du Data Lake
+storageAccountName = "omardbstorageaccount"
+storageAccountAccessKey = "n/M6dGAvjc8505kkOdZWCcfky+UKdckTs1aAhVFqb/J7Ck1yTg+meYzFXNAb/oz1mxXbizdVQdB5+ASt8wSp4w=="
+sasToken = "?sv=2022-11-02&ss=bfqt&srt=sco&sp=rwdlacupyx&se=2023-09-28T15:43:37Z&st=2023-09-27T07:43:37Z&spr=https&sig=13kFGISyoUEheYmR4g9YC3qa4hCoO8YDOEQzIorKfCw%3D"
+blobContainerName = "public-transport-data"
+mountPoint = "/mnt/public-transport-data/"
 
-def get_file_path(storage_account_name,storage_account_access_key,container_name):
-
-    spark.conf.set(f"fs.azure.account.key.{storage_account_name}.dfs.core.windows.net",
-    storage_account_access_key)
-
-    raw = f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/public-transport-data/raw/"
-    processed = f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/public-transport-data/processed/"
-    archived = f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/public-transport-data/archive/"
-    
-    raw_files = dbutils.fs.ls(raw)
-    processed_files = dbutils.fs.ls(processed)
-    archived_files = dbutils.fs.ls(archived)
-
-    return [raw_files, processed_files, archived_files]
+# Vérification de l'existence du point de montage
+if not any(mount.mountPoint == mountPoint for mount in dbutils.fs.mounts()):
+    try:
+        dbutils.fs.mount(
+            source="wasbs://{}@{}.blob.core.windows.net".format(blobContainerName, storageAccountName),
+            mount_point=mountPoint,
+            extra_configs={'fs.azure.sas.' + blobContainerName + '.' + storageAccountName + '.blob.core.windows.net': sasToken}
+        )
+        print("Montage réussi !")
+    except Exception as e:
+        print("Exception lors du montage :", e)
+else:
+    print("Le point de montage existe déjà.")
 
 def get_file_duration(path):
     modification_time_ms = path.modificationTime
     modification_time = datetime.fromtimestamp(modification_time_ms / 1000)  # Divide by 1000 to convert milliseconds to datetime
     duration = (datetime.now() - modification_time).total_seconds() / 60
-    print(duration)
     return duration
 
-
-
-
-# COMMAND ----------
-
-def archived_raw_files(raw_paths):
-    for path in raw_paths:
+def move_processed_files():
+    raw_path = mountPoint + "raw/"
+    processed_path = mountPoint + "processed/"
+    archive_path = mountPoint + "archive/"
+    
+    processed_files = dbutils.fs.ls(processed_path)
+    
+    for path in processed_files:
         file_duration = get_file_duration(path)
-        # check if the duration 
-        if file_duration >= 15:
-            # get the raw directory
+        # Check if the file is older than 10 minutes
+        if file_duration >= 1:
+            # Get the source directory
             source_directory = path.path
-            # get the archived directory
-            destination_directory = f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/public_transport_data/archive/{path.name}"
-            dbutils.fs.mv(source_directory, destination_directory,recurse = True)
-# COMMAND ----------
+            # Construct the destination directory in the archive folder
+            destination_directory = archive_path + path.name
+            
+            # Check if the file already exists in the archive directory
+            if not dbutils.fs.mv(source_directory, destination_directory):
+                # File doesn't exist in the archive, move it
+                dbutils.fs.mv(source_directory, destination_directory, recurse=True)
 
-def delete_archived_files(archived_paths):
-    for path in archived_paths:
+def delete_old_raw_files():
+    raw_path = mountPoint + "raw/"
+    raw_files = dbutils.fs.ls(raw_path)
+
+    for path in raw_files:
         file_duration = get_file_duration(path)
-        # check if the duration 
-        if file_duration >= 30:
-            # get the raw directory
+        # Check if the file is older than 15 minutes
+        if file_duration >= 2:
+            # Get the source directory
             source_directory = path.path
-            # get the archived directory
-            destination_directory = f"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/public_transport_data/archive/{path.name}"
-            dbutils.fs.rm(destination_directory,recurse = True)
+            # Delete the file
+            dbutils.fs.rm(source_directory)
 
+# Call the functions
+while True:
+    move_processed_files()
+    delete_old_raw_files()
+    # Sleep for a while before checking again (e.g., every minute)
+    time.sleep(30)
 
-
-# get files path
-files_paths = get_file_path(storage_account_name,storage_account_access_key,container_name)
-print(files_paths)
-#archived_raw_files(files_paths[0])
-#delete_archived_files(files_paths[2])
